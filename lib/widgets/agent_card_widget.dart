@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shimmer/shimmer.dart';
 import '../theme/app_theme.dart';
 import '../models/agent_model.dart';
 
+/// Agent Card Widget with shimmer effect for 'Thinking' status
 class AgentCardWidget extends StatelessWidget {
   final AgentModel agent;
   final VoidCallback? onKillSwitch;
@@ -17,13 +19,85 @@ class AgentCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap in shimmer if agent is "Thinking"
+    if (agent.isThinking) {
+      return _buildShimmerWrapper(child: _buildCard());
+    }
+    return _buildCard();
+  }
+
+  Widget _buildShimmerWrapper({required Widget child}) {
+    return Stack(
+      children: [
+        Shimmer.fromColors(
+          baseColor: AppTheme.surfaceDark.withAlpha(128),
+          highlightColor: AppTheme.primary.withAlpha(40),
+          period: const Duration(milliseconds: 2000),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceDark,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: child,
+          ),
+        ),
+        // Semi-transparent overlay with actual content
+        child,
+        // "THINKING" badge
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFCC00).withAlpha(30),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0xFFFFCC00).withAlpha(100),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFFCC00),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'THINKING',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFFFCC00),
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCard() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceDark.withAlpha(128),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.borderDark,
+          color: agent.isThinking
+              ? const Color(0xFFFFCC00).withAlpha(60)
+              : AppTheme.borderDark,
           width: 1,
         ),
       ),
@@ -82,7 +156,9 @@ class AgentCardWidget extends StatelessWidget {
                                 : FontWeight.w400,
                             color: agent.isDangerous
                                 ? AppTheme.danger
-                                : AppTheme.textMuted,
+                                : agent.isThinking
+                                    ? const Color(0xFFFFCC00)
+                                    : AppTheme.textMuted,
                           ),
                         ),
                       ],
@@ -90,7 +166,7 @@ class AgentCardWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              // ID & Cost
+              // ID & Cost & Confidence
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -106,15 +182,49 @@ class AgentCardWidget extends StatelessWidget {
                     agent.costFormatted,
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 12,
-                      color: agent.isDangerous
-                          ? AppTheme.primary
-                          : AppTheme.primary,
+                      color: AppTheme.primary,
                     ),
                   ),
+                  if (agent.confidenceScore > 0) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '⚡ ${agent.confidenceFormatted}',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 9,
+                        color: AppTheme.primary.withAlpha(180),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
           ),
+          // Task description (if available)
+          if (agent.taskDescription != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.terminalBg,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: const Color(0xFF1E293B),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                agent.taskDescription!,
+                style: GoogleFonts.jetBrainsMono(
+                  fontSize: 10,
+                  color: AppTheme.primary.withAlpha(180),
+                  height: 1.3,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           // Action buttons
           Row(
@@ -233,18 +343,21 @@ class AgentCardWidget extends StatelessWidget {
 
   Color get _iconBgColor {
     if (agent.isDangerous) return AppTheme.danger.withAlpha(51);
+    if (agent.isThinking) return const Color(0xFFFFCC00).withAlpha(35);
     if (agent.isHealthy) return AppTheme.primary.withAlpha(51);
     return AppTheme.borderDark;
   }
 
   Color get _iconColor {
     if (agent.isDangerous) return AppTheme.danger;
+    if (agent.isThinking) return const Color(0xFFFFCC00);
     if (agent.isHealthy) return AppTheme.primary;
     return AppTheme.textMuted;
   }
 
   Color get _statusColor {
     if (agent.isDangerous) return AppTheme.danger;
+    if (agent.isThinking) return const Color(0xFFFFCC00);
     return AppTheme.primary;
   }
 }
