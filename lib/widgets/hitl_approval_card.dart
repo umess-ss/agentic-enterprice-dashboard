@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/agent_model.dart';
 import '../services/supabase_agent_service.dart';
+import '../services/ai_service.dart';
 
 /// Human-in-the-Loop Approval Card
 /// Overlays on the UI when an agent proposes an action requiring human approval.
@@ -44,12 +45,19 @@ class _HitlApprovalCardState extends State<HitlApprovalCard>
   Future<void> _handleApprove() async {
     setState(() => _isProcessing = true);
     try {
+      // 1. Approve the action locally in Supabase
       await SupabaseAgentService.instance.approveAction(widget.action.id);
-      // Write log entry
+
+      // 2. Send 'Confirmed' status to the Edge Function to execute the agent's plan
+      final confirmed = await AIService.instance.confirmAction(widget.action.id);
+
+      // 3. Write log entry with AI confirmation status
       await SupabaseAgentService.instance.writeLog(
         agentId: widget.action.agentId,
         source: 'HITL_GATE',
-        message: 'ACTION_APPROVED: ${widget.action.title}',
+        message: confirmed
+            ? 'ACTION_CONFIRMED_AND_EXECUTING: ${widget.action.title}'
+            : 'ACTION_APPROVED: ${widget.action.title} (AI confirm pending)',
         level: 'info',
       );
     } catch (e) {
