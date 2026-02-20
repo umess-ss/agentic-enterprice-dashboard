@@ -1,3 +1,5 @@
+// @ts-nocheck — This file runs on Supabase's Deno runtime, not Node/browser.
+// Deno-specific imports (https:// URLs, Deno.env) resolve at deploy time.
 // supabase/functions/agent-brain/index.ts
 // ═══════════════════════════════════════════════════════════════════════════════
 // AGENT BRAIN — Supabase Edge Function
